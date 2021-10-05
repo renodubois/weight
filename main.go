@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -16,6 +15,31 @@ func check(e error) {
 	}
 }
 
+func writeWeight(db sql.DB, weight string) {
+	// First, look to see if we've got a date for today
+	date := time.Now().Format("2006/01/02")
+	selectQuery := "SELECT id FROM weight WHERE dateAdded = ?"
+	result := db.QueryRow(selectQuery, date)
+	var id int
+	scanErr := result.Scan(&id)
+	if scanErr == nil {
+		// If so, update
+		query := "UPDATE weight SET weight=? WHERE id=?"
+		_, err := db.Exec(query, weight, id)
+		check(err)
+		fmt.Println("Today's weight updated!")
+		return
+	} else {
+		// Otherwise, add new entry
+		query := "INSERT INTO weight (weight, dateAdded) VALUES (?,?)"
+		_, err := db.Exec(query, weight, date)
+		check(err)
+		fmt.Println("Today's weight added!")
+		return
+	}
+
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) < 1 {
@@ -23,19 +47,19 @@ func main() {
 		return
 	}
 	command := args[0]
+	db, err := sql.Open("sqlite3", "weight_data.db")
+	check(err)
 	if command == "add" {
 		if len(args) < 2 {
 			fmt.Println("Usage: weight add <weight>")
 			return
 		}
-		db, err := sql.Open("sqlite3", "weight_data.db")
-		check(err)
-
 		weightValue := args[1]
-		date := strconv.FormatInt(time.Now().Unix(), 10)
-		query := "INSERT INTO weight (weight, dateAdded) VALUES (?,?);"
-		_, execErr := db.Exec(query, weightValue, date)
-		check(execErr)
-		fmt.Println("Weight added!")
+		writeWeight(*db, weightValue)
+	} else if command == "view" {
+		// View today's weight entry.
+		// TODO(reno): allow for past dates to be queried
+		// now := strconv.FormatInt(time.Now().Unix(), 10)
+		return
 	}
 }
