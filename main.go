@@ -57,9 +57,22 @@ func main() {
 		weightValue := args[1]
 		writeWeight(*db, weightValue)
 	} else if command == "view" {
-		// View today's weight entry.
+		// View last 5 days
 		// TODO(reno): allow for past dates to be queried
-		// now := strconv.FormatInt(time.Now().Unix(), 10)
+		query := "SELECT weight, dateAdded FROM weight ORDER BY dateAdded DESC"
+		rows, err := db.Query(query)
+		check(err)
+		fmt.Printf("Weight\t    |   Date\t\n")
+		fmt.Printf("---------------------------\n")
+		for rows.Next() {
+			var weight float32
+			var dateAdded string
+			err := rows.Scan(&weight, &dateAdded)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("%f\t%s\t\n", weight, dateAdded)
+		}
 		return
 	}
 }
